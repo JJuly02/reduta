@@ -63,7 +63,8 @@
     <h1>A Capture The Flag platform that stays usable at 200 challenges.</h1>
     <p class="lead">Reduta is built for large events where CTFd starts to hurt: bulk actions in the
       admin panel, a reusable challenge library with revisions, block scheduling, a denormalized
-      live scoreboard, clean import and export, and King of the Hill as a plugin.</p>
+      live scoreboard, clean import and export, and King of the Hill as a plugin, behind a
+      fast, dense web UI for players and admins.</p>
     <a class="cta" href="#features">See what it does</a>
     <a class="cta ghost" href="#status">Project status</a>
   </div>
@@ -93,6 +94,7 @@
       <div class="card"><h3>Live scoreboard</h3><p>Denormalized scoreboard read straight from a projection, cached, and pushed to clients over WebSocket as solves land.</p></div>
       <div class="card"><h3>Import and export</h3><p>Round-trip an event as JSON with a dry-run plan, or bring challenges across from a CTFd export.</p></div>
       <div class="card"><h3>Plugins</h3><p>Out-of-process plugins over signed webhooks and a narrow token-scoped API, so King of the Hill can be wrapped rather than rewritten.</p></div>
+      <div class="card"><h3>Web UI</h3><p>React front end for players and admins: a challenge board grouped by category, a live scoreboard with a progress chart, admin notifications, global teams with invite codes, and an admin panel for challenges, teams and events.</p></div>
     </div>
   </section>
 
@@ -106,7 +108,7 @@
 
   <section id="status">
     <h2>Status</h2>
-    <p class="stack">Built and tested milestone by milestone, with an end-to-end smoke suite on every step.</p>
+    <p class="stack">All milestones are complete and verified, built and tested step by step with an end-to-end smoke suite on every commit. The platform runs full stack with a single <code>docker compose up</code>: API, worker, database, cache, the reference King of the Hill plugin, and a web UI.</p>
     <div class="ms">
       <span class="m done">M0 skeleton</span>
       <span class="m done">M1 core</span>
@@ -115,8 +117,8 @@
       <span class="m done">M4 import and export</span>
       <span class="m done">M5 realtime and cache</span>
       <span class="m done">M6 web UI</span>
-      <span class="m">M7 plugin API</span>
-      <span class="m">M8 instances and KotH</span>
+      <span class="m done">M7 plugin API</span>
+      <span class="m done">M8 instances and KotH</span>
     </div>
   </section>
 </main>
