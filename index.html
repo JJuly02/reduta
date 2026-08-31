@@ -3,149 +3,445 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reduta - CTF platform</title>
-<meta name="description" content="Reduta is a Capture The Flag platform for large events: a challenge library, block scheduling, global teams, bulk admin actions, a live scoreboard, import and export, and King of the Hill as a plugin.">
+<title>Reduta - CTF platform wiki</title>
+<meta name="description" content="Reduta is a self-hosted Capture The Flag platform. This wiki explains why it exists, how it is built, and how each part works: architecture, performance, data model, scoring, scheduling, plugins, API and self-hosting.">
 <style>
   :root{
     color-scheme:dark;
-    --s0:oklch(0.15 0.01 260); --s1:oklch(0.19 0.012 260); --s2:oklch(0.24 0.014 260);
+    --s0:oklch(0.15 0.01 260); --s1:oklch(0.185 0.012 260); --s2:oklch(0.23 0.014 260);
     --bd:oklch(0.33 0.02 260); --tx:oklch(0.94 0.02 260); --dim:oklch(0.70 0.02 260);
-    --ac:oklch(0.72 0.16 240); --ok:oklch(0.72 0.17 150);
+    --dim2:oklch(0.56 0.02 260); --ac:oklch(0.72 0.16 240); --ok:oklch(0.72 0.17 150);
+    --amber:oklch(0.80 0.15 75);
     --mono:ui-monospace,"JetBrains Mono",Menlo,monospace;
     --sans:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--s0);color:var(--tx);font-family:var(--sans);line-height:1.6;font-size:16px}
+  body{margin:0;background:var(--s0);color:var(--tx);font-family:var(--sans);line-height:1.65;font-size:16px}
   a{color:var(--ac);text-decoration:none} a:hover{text-decoration:underline}
-  .wrap{max-width:1000px;margin:0 auto;padding:0 22px}
-  header{border-bottom:1px solid var(--bd);background:var(--s1);position:sticky;top:0;z-index:5}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+  header{border-bottom:1px solid var(--bd);background:var(--s1);position:sticky;top:0;z-index:10}
   .bar{display:flex;align-items:center;height:56px;gap:18px}
   .brand{font-weight:800;letter-spacing:0.16em}.brand .d{color:var(--ac)}
-  .bar .sp{flex:1}.bar a{color:var(--dim);font-weight:550}
-  .hero{padding:64px 0 30px}
-  .hero h1{font-size:42px;line-height:1.12;letter-spacing:-0.02em;margin:0 0 16px;max-width:760px}
-  .hero p.lead{font-size:19px;color:var(--dim);max-width:680px;margin:0 0 22px}
-  .pill{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--ac);border:1px solid var(--bd);border-radius:999px;padding:4px 12px;margin-bottom:18px}
-  .cta{display:inline-block;background:var(--ac);color:oklch(0.15 0.02 240);font-weight:650;padding:10px 18px;border-radius:6px;margin-right:10px}
-  .cta.ghost{background:transparent;color:var(--tx);border:1px solid var(--bd)}
-  section{padding:40px 0;border-top:1px solid var(--bd)}
-  h2{font-size:26px;letter-spacing:-0.01em;margin:0 0 8px}
-  .sub{color:var(--dim);margin:0 0 22px;max-width:720px}
-  figure{margin:0 0 8px}
+  .bar .sp{flex:1}.bar a{color:var(--dim);font-weight:550;font-size:14px}
+  .hero{padding:46px 0 26px;border-bottom:1px solid var(--bd)}
+  .hero h1{font-size:34px;line-height:1.15;letter-spacing:-0.02em;margin:0 0 12px;max-width:820px}
+  .hero p{font-size:18px;color:var(--dim);max-width:760px;margin:0}
+  .pill{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--ac);border:1px solid var(--bd);border-radius:999px;padding:4px 12px;margin-bottom:14px}
+
+  .layout{display:grid;grid-template-columns:238px 1fr;gap:40px;align-items:start;padding:28px 0 60px}
+  @media(max-width:900px){.layout{grid-template-columns:1fr;gap:10px}}
+  .side{position:sticky;top:72px;font-size:14px;max-height:calc(100vh - 90px);overflow:auto}
+  @media(max-width:900px){.side{position:static;max-height:none;border-bottom:1px solid var(--bd);padding-bottom:12px;margin-bottom:8px}}
+  .side a{display:block;color:var(--dim);padding:3px 0}
+  .side a:hover{color:var(--tx);text-decoration:none}
+  .side .group{margin:16px 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.09em;color:var(--dim2)}
+
+  .content section{scroll-margin-top:72px;padding:10px 0 26px;border-bottom:1px solid var(--bd)}
+  .content h2{font-size:24px;letter-spacing:-0.01em;margin:14px 0 10px}
+  .content h3{font-size:17px;margin:18px 0 6px}
+  .content p{margin:0 0 12px;max-width:820px}
+  .content ul{max-width:820px;color:var(--tx)}
+  .content li{margin:4px 0}
+  .muted{color:var(--dim)}
+  code,.mono{font-family:var(--mono)}
+  p code,li code,td code{background:var(--s2);border:1px solid var(--bd);border-radius:4px;padding:0 5px;font-size:13.5px}
+  pre.run{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;overflow:auto;font-family:var(--mono);font-size:13.5px;color:var(--tx);max-width:820px}
+  figure{margin:14px 0}
   figure img{width:100%;height:auto;display:block;border:1px solid var(--bd);border-radius:10px;box-shadow:0 10px 30px oklch(0 0 0 / 0.35)}
   figcaption{color:var(--dim);font-size:13px;margin-top:8px}
-  .shots{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-  .shots .full{grid-column:1 / -1}
+  .shots{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   @media(max-width:720px){.shots{grid-template-columns:1fr}}
-  ol.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:14px}
-  ol.steps li{position:relative;padding:14px 16px 14px 56px;background:var(--s1);border:1px solid var(--bd);border-radius:8px}
-  ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:14px;top:14px;width:28px;height:28px;border-radius:50%;background:var(--ac);color:oklch(0.15 0.02 240);font-weight:700;display:grid;place-items:center}
-  ol.steps b{color:var(--tx)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-  .card{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:16px}
-  .card h3{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--dim);font-size:14px}
-  code,.mono{font-family:var(--mono)}
-  .ms{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-  .ms .m{font-family:var(--mono);font-size:13px;border:1px solid var(--ok);border-radius:6px;padding:6px 10px;color:var(--ok)}
-  .stack{color:var(--dim);font-size:15px}
-  pre.run{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;overflow:auto;font-family:var(--mono);font-size:14px;color:var(--tx)}
-  footer{border-top:1px solid var(--bd);color:var(--dim);font-size:13px;padding:26px 0 50px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin:6px 0 4px}
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px}
+  .card h3{margin:0 0 5px;font-size:15px}.card p{margin:0;color:var(--dim);font-size:13.5px}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0;max-width:820px}
+  table.tbl th,table.tbl td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--bd);vertical-align:top}
+  table.tbl th{color:var(--dim);font-weight:600}
+  .note{border-left:3px solid var(--ac);background:var(--s1);padding:10px 14px;border-radius:0 6px 6px 0;margin:12px 0;max-width:820px}
+  .note.warn{border-color:var(--amber)}
+  .ms{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .ms .m{font-family:var(--mono);font-size:13px;border:1px solid var(--ok);border-radius:6px;padding:5px 9px;color:var(--ok)}
+  footer{border-top:1px solid var(--bd);color:var(--dim);font-size:13px;padding:24px 0 50px}
 </style>
 </head>
 <body>
 <header><div class="wrap bar">
   <span class="brand">REDUTA<span class="d">.</span></span>
   <span class="sp"></span>
-  <a href="#what">Overview</a><a href="#how">How it works</a><a href="#player">Player</a><a href="#admin">Admin</a><a href="#stack">Stack</a>
+  <a href="#why">Why</a><a href="#architecture">Architecture</a><a href="#performance">Performance</a><a href="#api">API</a><a href="#selfhost">Self-host</a>
 </div></header>
 
-<main class="wrap">
-  <div class="hero">
-    <div class="pill">CTF platform, working title</div>
-    <h1>A Capture The Flag platform that stays usable at 200 challenges.</h1>
-    <p class="lead">Reduta runs large CTF events without the operational pain of older tools: a reusable
-      challenge library, block scheduling, global teams, bulk admin actions, a denormalized live
-      scoreboard, clean import and export, and King of the Hill as a plugin, behind a fast web UI
-      for players and admins.</p>
-    <a class="cta" href="#how">How it works</a>
-    <a class="cta ghost" href="#player">See the UI</a>
-  </div>
+<div class="wrap hero">
+  <div class="pill">Project wiki, working title</div>
+  <h1>Reduta: a Capture The Flag platform that stays fast and predictable at scale.</h1>
+  <p>This is the documentation for Reduta. It explains why the project exists, how it is put together, and how each part works, from the scoreboard projection to the plugin protocol.</p>
+</div>
 
-  <figure><img src="screenshots/scoreboard.png" alt="Live scoreboard with a progress chart">
-    <figcaption>Live scoreboard: a progress chart of the top teams over time, backed by a denormalized projection and pushed to clients over WebSocket.</figcaption>
-  </figure>
+<div class="wrap layout">
+  <nav class="side">
+    <div class="group">Start here</div>
+    <a href="#overview">Overview</a>
+    <a href="#why">Why Reduta exists</a>
+    <a href="#how">How it works</a>
+    <div class="group">Design</div>
+    <a href="#architecture">Architecture</a>
+    <a href="#performance">Performance</a>
+    <a href="#datamodel">Data model</a>
+    <a href="#realtime">Realtime</a>
+    <a href="#security">Security</a>
+    <div class="group">Features</div>
+    <a href="#library">Challenge library</a>
+    <a href="#scoring">Scoring and flags</a>
+    <a href="#scheduling">Scheduling and unlocks</a>
+    <a href="#teams">Teams and events</a>
+    <a href="#bulk">Bulk admin actions</a>
+    <a href="#importexport">Import and export</a>
+    <a href="#plugins">Plugins and KotH</a>
+    <div class="group">Screens</div>
+    <a href="#player">Player UI</a>
+    <a href="#admin">Admin panel</a>
+    <div class="group">Operate</div>
+    <a href="#selfhost">Self-hosting</a>
+    <a href="#api">API reference</a>
+    <a href="#testing">Testing</a>
+    <a href="#status">Status and roadmap</a>
+    <a href="#faq">FAQ</a>
+  </nav>
 
-  <section id="what">
-    <h2>What it is</h2>
-    <p class="sub">Reduta is a self-hosted platform for organizing Capture The Flag competitions.
-      Organizers build challenges once and reuse them across events, group them into blocks with
-      time windows and unlock rules, register teams, and run scoring in real time. Players form
-      teams, work through challenges by category, and submit flags. Everything an organizer touches,
-      from bulk edits to notifications to imports, is designed to stay fast when there are hundreds
-      of challenges and teams.</p>
-    <div class="grid">
-      <div class="card"><h3>Challenge library</h3><p>Reusable challenges with immutable revisions. Editing creates a new version, so history and rollback are free. Embed a pinned revision into an event.</p></div>
-      <div class="card"><h3>Blocks and scheduling</h3><p>Group challenges into blocks with availability windows (RRULE) and per-team unlock rules: solved, points, block completion, and time gates.</p></div>
-      <div class="card"><h3>Global teams</h3><p>A player creates a team or joins one with an invite code. Admins assign teams to events; only assigned teams play and appear on the scoreboard.</p></div>
-      <div class="card"><h3>Bulk admin actions</h3><p>Select by filter, then publish, hide, assign a block, retag or delete in one step, with an audit trail and undo.</p></div>
-      <div class="card"><h3>Import and export</h3><p>Round-trip an event as JSON with a dry-run plan, or bring challenges across from a CTFd export.</p></div>
-      <div class="card"><h3>Plugins</h3><p>Out-of-process plugins over signed webhooks and a narrow token-scoped API, so King of the Hill is wrapped rather than rewritten.</p></div>
-    </div>
-  </section>
+  <main class="content">
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>Reduta is a self-hosted platform for organizing Capture The Flag competitions. Organizers build
+        challenges once and reuse them across events, group them into blocks with time windows and unlock
+        rules, register teams, and run scoring in real time. Players form teams, work through challenges by
+        category, and submit flags. The whole thing runs as a single <code>docker compose up</code>: an API
+        server, a background worker, PostgreSQL, Redis, a reference King of the Hill plugin, and a web UI.</p>
+      <div class="grid">
+        <div class="card"><h3>For organizers</h3><p>A challenge library, block scheduling, bulk actions with undo, notifications, import and export, and a fast admin panel.</p></div>
+        <div class="card"><h3>For players</h3><p>A dense challenge board by category, a flag panel, and a live scoreboard with a progress chart.</p></div>
+        <div class="card"><h3>For hosts</h3><p>One static Go binary plus Postgres and Redis. No heavy runtime, trivial to self-host.</p></div>
+      </div>
+    </section>
 
-  <section id="how">
-    <h2>How it works</h2>
-    <p class="sub">The flow from an empty instance to a running competition.</p>
-    <ol class="steps">
-      <li><b>Build challenges.</b> Admins add challenges to a library or straight into an event, set categories, points and flags, and group them into blocks with schedules.</li>
-      <li><b>Create the event.</b> An event embeds challenges at a pinned revision, with its own points, visibility and windows. State moves from draft to running to ended.</li>
-      <li><b>Players form teams.</b> A player registers, then creates a team or joins one with an invite code. One team per player, shared across the platform.</li>
-      <li><b>Admins assign teams.</b> Admins add teams to an event. Only assigned teams can open it, submit flags and show on its scoreboard.</li>
-      <li><b>Players solve.</b> The challenge board groups tasks by category, shows locked and scheduled states, and submits flags from a side panel. Wrong guesses are hashed, not stored in plaintext.</li>
-      <li><b>Scoring is live.</b> Static or dynamic points, first blood bonuses, rate limiting, and a denormalized scoreboard that updates over WebSocket as solves land.</li>
-      <li><b>Admins run the event.</b> A dedicated admin panel handles bulk actions, notifications, submissions review, import and export, and plugins, all from one place.</li>
-    </ol>
-  </section>
+    <section id="why">
+      <h2>Why Reduta exists</h2>
+      <p>CTFd is the tool most people reach for, and it is genuinely good. But at large events it gets slow,
+        and the slowness is not only about the language. CTFd runs on Python and Flask, and its default
+        deployment compounds a few architectural choices that hurt under load:</p>
+      <ul>
+        <li>Synchronous workers that handle one request each, so a few dozen concurrent users saturate them.</li>
+        <li>N+1 queries when listing challenges: each challenge separately pulls its tags, hints, files and
+          solve count, so 200 challenges turn into hundreds of queries per refresh.</li>
+        <li>A scoreboard recomputed with heavy joins over the submissions table on every request, instead of
+          keeping a denormalized standing.</li>
+        <li>An admin table that renders every row server-side without virtualization or server-side paging.</li>
+        <li>Caching that is optional and often left off.</li>
+      </ul>
+      <p>Reduta keeps the same ideas but rebuilds them on an architecture that removes those bottlenecks. It
+        uses Go and a single static binary, a scoreboard read straight from a denormalized projection,
+        indexes and cursor pagination, a Redis cache, asynchronous workers for heavy jobs, and WebSocket
+        push instead of polling. The result is lower and more predictable latency when hundreds of teams
+        refresh and submit at the same time, which is exactly the moment a CTF platform tends to fall over.</p>
+      <p>The other reason is reliability. A recurring annoyance in large admin panels is a bulk operation
+        that only partially applies: you select many challenges, run an action, and only half of them
+        actually change. In Reduta every bulk action runs as a single database transaction, reports exactly
+        how many objects it affected, writes one audit entry, and keeps an undo snapshot. You never end up
+        in a half-applied state, and if you change your mind you can reverse it.</p>
+      <div class="note">Reduta is a rethink, not a rewrite of CTFd. It does not run CTFd code or themes. It
+        imports CTFd challenge data so you can migrate, and it aims to match the workflow organizers already
+        know while fixing the parts that hurt at scale.</div>
+    </section>
 
-  <section id="player">
-    <h2>Player experience</h2>
-    <p class="sub">Dense and quick: a challenge board by category, a task panel for submitting flags, and a live scoreboard.</p>
-    <div class="shots">
-      <figure><img src="screenshots/board.png" alt="Challenge board grouped by category">
-        <figcaption>Challenges grouped by category, with points and solved state.</figcaption></figure>
-      <figure><img src="screenshots/challenge.png" alt="Challenge panel with flag submission">
-        <figcaption>A task panel with the description and a flag field.</figcaption></figure>
-    </div>
-  </section>
+    <section id="how">
+      <h2>How it works</h2>
+      <p>The flow from an empty instance to a running competition:</p>
+      <ul>
+        <li><b>Build challenges.</b> Add them to a reusable library or straight into an event, set category,
+          points and flags, and group them into blocks with schedules.</li>
+        <li><b>Create the event.</b> An event embeds challenges at a pinned revision with its own points,
+          visibility and windows. State moves draft, running, ended.</li>
+        <li><b>Players form teams.</b> A player registers, then creates a team or joins one with an invite
+          code. One team per player, shared across the platform.</li>
+        <li><b>Admins assign teams.</b> Only teams assigned to an event can open it, submit flags and appear
+          on its scoreboard.</li>
+        <li><b>Players solve.</b> The board groups tasks by category and shows locked and scheduled states.
+          Flags are submitted from a side panel; wrong guesses are hashed, never stored in plaintext.</li>
+        <li><b>Scoring is live.</b> Static or dynamic points, first blood bonuses, rate limiting, and a
+          denormalized scoreboard that updates over WebSocket as solves land.</li>
+      </ul>
+    </section>
 
-  <section id="admin">
-    <h2>Admin panel</h2>
-    <p class="sub">A separate admin surface with its own navigation: statistics, notifications, events, challenges, blocks, the library, teams, submissions and the scoreboard.</p>
-    <div class="shots">
-      <figure class="full"><img src="screenshots/admin-challenges.png" alt="Admin challenges table">
-        <figcaption>Challenges table with multi-select bulk actions, publish and hide, create, and import and export.</figcaption></figure>
-      <figure><img src="screenshots/admin-teams.png" alt="Admin teams assignment">
-        <figcaption>Assign teams to the event; only assigned teams can play.</figcaption></figure>
-      <figure><img src="screenshots/admin-notifications.png" alt="Admin notifications">
-        <figcaption>Send a notification; players receive it live.</figcaption></figure>
-    </div>
-  </section>
+    <section id="architecture">
+      <h2>Architecture</h2>
+      <p>Reduta is a modular monolith, not a set of microservices. One <code>reduta-server</code> process
+        serves the HTTP API and WebSocket connections; one <code>reduta-worker</code> process runs
+        background jobs on a Redis queue. Module boundaries are enforced by package structure and an import
+        linter rather than by the network, which keeps the system simple to run and reason about at this
+        scale.</p>
+      <ul>
+        <li><b>Language:</b> Go 1.23. A single static binary makes self-hosting trivial and gives predictable
+          latency without garbage-collection stalls of hundreds of milliseconds.</li>
+        <li><b>Storage:</b> PostgreSQL 16 as the single source of truth (JSONB for flexible challenge config),
+          Redis 7 for cache, rate limiting, pub/sub fan-out and the job queue.</li>
+        <li><b>API first:</b> the admin panel and player view are a separate React single-page app that talks
+          to a versioned JSON API. The public scoreboard can also be embedded.</li>
+        <li><b>Plugins out of process:</b> a plugin is a separate HTTP service that talks to the core over
+          signed webhooks and a narrow token-scoped API. It cannot crash the core and can be written in any
+          language, which is how King of the Hill is wrapped rather than rewritten.</li>
+      </ul>
+    </section>
 
-  <section id="stack">
-    <h2>Under the hood</h2>
-    <p class="stack">Backend: Go modular monolith (chi, pgx, golang-migrate, asynq, nhooyr websocket),
-      PostgreSQL 16, Redis 7. Frontend: React 19, TypeScript, Vite, TanStack Query. Out-of-process
-      plugins over signed webhooks. A single command brings up the API, worker, database, cache, the
-      reference King of the Hill plugin, and the web UI:</p>
-    <pre class="run">docker compose up</pre>
-    <div class="ms">
-      <span class="m">M0 skeleton</span><span class="m">M1 core</span><span class="m">M2 library and bulk</span>
-      <span class="m">M3 schedules and unlocks</span><span class="m">M4 import and export</span>
-      <span class="m">M5 realtime and cache</span><span class="m">M6 web UI</span>
-      <span class="m">M7 plugin API</span><span class="m">M8 instances and KotH</span>
-    </div>
-  </section>
-</main>
+    <section id="performance">
+      <h2>Performance</h2>
+      <p>Performance is treated as an architectural property, not a language contest. The main levers:</p>
+      <ul>
+        <li><b>Denormalized scoreboard.</b> Standings live in a <code>scoreboard_entries</code> projection
+          updated transactionally as score events are written. The scoreboard is never recomputed by
+          aggregating over submissions in the request path.</li>
+        <li><b>Cache.</b> Scoreboard responses are cached in Redis for a couple of seconds and invalidated on
+          every score change, so a projector screen refreshing constantly costs almost nothing.</li>
+        <li><b>No N+1.</b> List endpoints return light DTOs and avoid per-row queries. The rule is: the number
+          of SQL queries for a list does not grow with the number of rows.</li>
+        <li><b>Realtime push.</b> Solves and challenge changes are pushed to clients over WebSocket, so the UI
+          does not poll.</li>
+        <li><b>Async work.</b> Heavy operations such as imports and large bulk actions run on a worker queue
+          rather than blocking a request.</li>
+      </ul>
+      <p class="muted">Every step is verified by an end-to-end smoke suite that runs on each commit, so
+        regressions in these paths are caught early.</p>
+    </section>
+
+    <section id="datamodel">
+      <h2>Data model</h2>
+      <p>The biggest departure from CTFd is that a challenge is not trapped inside a single event.</p>
+      <table class="tbl">
+        <thead><tr><th>Entity</th><th>What it is</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">challenges</td><td>The reusable library, independent of any event.</td></tr>
+          <tr><td class="mono">challenge_revisions</td><td>Immutable content versions. Editing creates a new revision, so history and rollback are free.</td></tr>
+          <tr><td class="mono">event_challenges</td><td>A specific revision embedded into an event, with its own points, state, block, schedule and unlock rule.</td></tr>
+          <tr><td class="mono">blocks</td><td>Named groups of challenges within an event, carrying schedules and unlock rules.</td></tr>
+          <tr><td class="mono">teams, team_members</td><td>Global teams. One team per player, joined with an invite code.</td></tr>
+          <tr><td class="mono">event_teams</td><td>Which teams an admin has admitted to an event.</td></tr>
+          <tr><td class="mono">submissions</td><td>Every attempt. Wrong guesses stored as a hash, correct solves marked, unique per team and challenge.</td></tr>
+          <tr><td class="mono">score_events</td><td>A single stream of point changes: solve, hint, award, penalty, adjustment. Unique on (event, source, ref) for idempotency.</td></tr>
+          <tr><td class="mono">scoreboard_entries</td><td>The denormalized standing, updated from score events.</td></tr>
+        </tbody>
+      </table>
+      <p>Cloning a challenge is then natural: it is a new library challenge with a copy of the latest
+        revision, or the same challenge embedded again into another event without copying anything.</p>
+    </section>
+
+    <section id="realtime">
+      <h2>Realtime</h2>
+      <p>Clients open a WebSocket for an event. The server publishes messages when the scoreboard moves,
+        when challenges change (state, schedule, unlocks), and when an admin sends a notification. Fan-out
+        across multiple server instances goes through Redis pub/sub, so the system scales horizontally
+        without clients noticing. Notifications appear as a live toast for every player in the event.</p>
+    </section>
+
+    <section id="security">
+      <h2>Security</h2>
+      <p>The users of this platform are attackers, so hostile input is the default assumption.</p>
+      <ul>
+        <li>Passwords hashed with argon2id; sessions are server-side, the cookie holds only a random token.</li>
+        <li>Flags are compared as salted hashes; wrong submissions are stored hashed, never in plaintext, so
+          the database does not leak attempts.</li>
+        <li>Per-team dynamic flags (an HMAC of the event, team and challenge) make a leaked flag useless for
+          another team.</li>
+        <li>Submissions are rate limited per team with backoff.</li>
+        <li>Design intent for later hardening: markdown sanitization for challenge descriptions, an allowlist
+          for git-sync and webhook targets to prevent SSRF, and per-instance network isolation for
+          challenge containers.</li>
+      </ul>
+    </section>
+
+    <section id="library">
+      <h2>Challenge library</h2>
+      <p>Challenges are authored once and reused. Each edit produces a new immutable revision, so you get
+        history and one-click rollback. A challenge can be cloned into a variant, or embedded into an event
+        pinned to a specific revision, so fixing a challenge in the library does not silently change a
+        competition that is already running.</p>
+    </section>
+
+    <section id="scoring">
+      <h2>Scoring and flags</h2>
+      <ul>
+        <li><b>Static or dynamic points.</b> Static is a fixed value; dynamic decays with the number of solves
+          (the initial value is used until full decay lands).</li>
+        <li><b>First blood.</b> The first team to solve a challenge gets a configurable bonus, recorded as a
+          separate award in the score stream.</li>
+        <li><b>Idempotent awards.</b> Everything that changes points is a score event, unique per source and
+          reference, so a retried write never double counts.</li>
+        <li><b>Flags.</b> Normalized and hashed; case sensitivity is per flag. Per-team dynamic flags stop
+          flag sharing.</li>
+        <li><b>Tie-break.</b> Points first, then earliest last solve.</li>
+      </ul>
+    </section>
+
+    <section id="scheduling">
+      <h2>Scheduling and unlocks</h2>
+      <p>Blocks and challenges carry availability windows described with RRULE (the iCalendar recurrence
+        format), so you can open a set of tasks daily at a fixed time, or once for a fixed duration. A
+        challenge without a schedule inherits its block's; a block without one inherits the event's.</p>
+      <p>Unlock rules gate challenges per team. The evaluator is a pure function over a team's state and
+        supports combinations of: a specific challenge solved, a points threshold, a solve count, a
+        deadline, and a whole block completed. Locked challenges are shown so players know what to aim for.</p>
+    </section>
+
+    <section id="teams">
+      <h2>Teams and events</h2>
+      <p>Teams are global. A player registers, then creates a team and becomes its captain, or joins an
+        existing team with its invite code. There is one team per player across the platform. Admins decide
+        which teams take part in each event by assigning them; only assigned teams can open the event,
+        submit flags and appear on its scoreboard. Multiple events can run on one instance at once.</p>
+    </section>
+
+    <section id="bulk">
+      <h2>Bulk admin actions</h2>
+      <p>At 200 challenges the admin panel is where most time goes, so bulk operations are first class. You
+        select rows, or select every row that matches a filter, and apply an action: publish, hide,
+        archive, assign to a block, add or remove tags, set a schedule, or delete. Each bulk action:</p>
+      <ul>
+        <li>runs as a single transaction, so it never half-applies;</li>
+        <li>reports exactly how many objects it touched;</li>
+        <li>records one audit entry with the selector and the affected ids;</li>
+        <li>keeps an undo snapshot for the reversible ones.</li>
+      </ul>
+      <p>This directly fixes the class of bug where a bulk operation appears to run but only some of the
+        selected challenges actually change.</p>
+    </section>
+
+    <section id="importexport">
+      <h2>Import and export</h2>
+      <p>An event round-trips as JSON, including blocks and challenges with their hashed flags. Import runs
+        with an optional dry run that returns a plan (created, updated) before anything is written, and is
+        idempotent by title. A CTFd export can be imported directly, mapping challenges, flags and points,
+        so migrating an existing competition is a single step.</p>
+    </section>
+
+    <section id="plugins">
+      <h2>Plugins and King of the Hill</h2>
+      <p>A plugin is an external HTTP service. The core never loads its code. Registration provides a
+        manifest and a token; the core sends signed webhooks (an HMAC over timestamp and body) for events
+        like a solve or a minute tick, and the plugin calls back a narrow API to grant idempotent awards,
+        list teams, or post announcements.</p>
+      <p>King of the Hill ships as a reference plugin: on each tick it awards the current holder of a target,
+        verified against the core's award endpoint. Wrapping an existing King of the Hill project means
+        pointing its holder detection at this plugin, not rewriting it. A small operator tool,
+        <code>reduta plugin verify</code>, checks that a plugin accepts signed webhooks, is idempotent on
+        redelivery, and rejects bad signatures.</p>
+    </section>
+
+    <section id="player">
+      <h2>Player UI</h2>
+      <p>Dense and quick: a challenge board grouped by category, a task panel for submitting flags, and a
+        live scoreboard.</p>
+      <div class="shots">
+        <figure><img src="screenshots/board.png" alt="Challenge board by category"><figcaption>Challenges grouped by category, with points and solved state.</figcaption></figure>
+        <figure><img src="screenshots/challenge.png" alt="Challenge panel"><figcaption>A task panel with the description and a flag field.</figcaption></figure>
+      </div>
+      <figure><img src="screenshots/scoreboard.png" alt="Live scoreboard"><figcaption>The live scoreboard: a progress chart of the top teams over time, plus the ranking table.</figcaption></figure>
+    </section>
+
+    <section id="admin">
+      <h2>Admin panel</h2>
+      <p>A separate admin surface with its own navigation: statistics, notifications, events, challenges,
+        blocks, the library, teams, submissions and the scoreboard.</p>
+      <figure><img src="screenshots/admin-challenges.png" alt="Admin challenges table"><figcaption>Challenges table with multi-select bulk actions, publish and hide, create, and import and export.</figcaption></figure>
+      <div class="shots">
+        <figure><img src="screenshots/admin-teams.png" alt="Team assignment"><figcaption>Assign teams to the event; only assigned teams can play.</figcaption></figure>
+        <figure><img src="screenshots/admin-notifications.png" alt="Notifications"><figcaption>Send a notification; players receive it live.</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="selfhost">
+      <h2>Self-hosting</h2>
+      <p>Development and small deployments run on Docker Compose. One command brings up the API, worker,
+        database, cache, the reference plugin, and the web UI:</p>
+      <pre class="run">docker compose up</pre>
+      <p>Configuration is entirely environment variables, so the single binary is easy to run without a
+        config file. The important ones:</p>
+      <table class="tbl">
+        <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">REDUTA_DATABASE_URL</td><td>PostgreSQL connection string.</td></tr>
+          <tr><td class="mono">REDUTA_REDIS_ADDR</td><td>Redis host and port.</td></tr>
+          <tr><td class="mono">REDUTA_HTTP_ADDR</td><td>Listen address for the API.</td></tr>
+          <tr><td class="mono">REDUTA_SESSION_TTL</td><td>Session lifetime.</td></tr>
+          <tr><td class="mono">REDUTA_SUBMIT_RATE_PER_MIN</td><td>Flag submissions per team per minute.</td></tr>
+          <tr><td class="mono">REDUTA_FLAG_SECRET</td><td>HMAC secret for per-team dynamic flags.</td></tr>
+          <tr><td class="mono">REDUTA_BOOTSTRAP_ADMIN_EMAIL / _PASSWORD</td><td>Owner account created on first start.</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Migrations are embedded in the binary and run on startup, so a fresh database becomes a
+        working instance with no extra steps.</p>
+    </section>
+
+    <section id="api">
+      <h2>API reference</h2>
+      <p>A versioned JSON API under <code>/api/v1</code>. Errors follow RFC 9457
+        (<code>application/problem+json</code>). A selection of endpoints:</p>
+      <table class="tbl">
+        <thead><tr><th>Method and path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">POST /auth/register, /auth/login</td><td>Account creation and sign in (session cookie).</td></tr>
+          <tr><td class="mono">POST /teams, /teams/join</td><td>Create a global team, or join by invite code.</td></tr>
+          <tr><td class="mono">GET /me/team</td><td>The caller's team and invite code.</td></tr>
+          <tr><td class="mono">POST /events</td><td>Create an event (admin).</td></tr>
+          <tr><td class="mono">POST /events/{id}/event-teams</td><td>Assign a team to an event (admin).</td></tr>
+          <tr><td class="mono">GET /events/{id}/challenges</td><td>Challenge list, gated by schedule and unlocks.</td></tr>
+          <tr><td class="mono">POST .../challenges/{ec}/submit</td><td>Submit a flag.</td></tr>
+          <tr><td class="mono">POST .../challenges/bulk</td><td>Bulk action by ids or filter (admin).</td></tr>
+          <tr><td class="mono">GET /events/{id}/scoreboard</td><td>Standings, plus <code>/scoreboard/series</code> for the chart.</td></tr>
+          <tr><td class="mono">GET /events/{id}/export, POST /import</td><td>JSON round-trip; import accepts <code>?format=ctfd</code>.</td></tr>
+          <tr><td class="mono">POST /plugin/v1/awards</td><td>Idempotent award from a plugin (bearer token).</td></tr>
+          <tr><td class="mono">GET /ws?event={id}</td><td>WebSocket for live updates.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="testing">
+      <h2>Testing</h2>
+      <p>The project is built milestone by milestone, each with tests. Pure logic (scoring, the unlock
+        evaluator, RRULE expansion, flag verification) has unit tests. The critical flows have an
+        end-to-end smoke suite that runs against a live stack: register, form teams, assign to an event,
+        publish challenges, submit flags, first blood, the live scoreboard, bulk actions with undo, import
+        and export including a CTFd sample, the plugin award path, and per-team instances. The suite runs on
+        every commit, so the fast paths above stay correct.</p>
+    </section>
+
+    <section id="status">
+      <h2>Status and roadmap</h2>
+      <p>All milestones are complete and verified:</p>
+      <div class="ms">
+        <span class="m">M0 skeleton</span><span class="m">M1 core</span><span class="m">M2 library and bulk</span>
+        <span class="m">M3 schedules and unlocks</span><span class="m">M4 import and export</span>
+        <span class="m">M5 realtime and cache</span><span class="m">M6 web UI</span>
+        <span class="m">M7 plugin API</span><span class="m">M8 instances and KotH</span>
+      </div>
+      <p class="muted">Conscious simplifications, documented for later: the admin table is not yet
+        row-virtualized for thousands of rows, dynamic scoring uses the initial value until full decay is
+        implemented, container provisioning for per-team instances is a documented opt-in rather than the
+        default, and the King of the Hill plugin is a reference implementation to be pointed at an existing
+        project.</p>
+    </section>
+
+    <section id="faq">
+      <h2>FAQ</h2>
+      <h3>Is this a fork of CTFd?</h3>
+      <p>No. It shares none of CTFd's code. It imports CTFd challenge data so you can migrate.</p>
+      <h3>Can I keep my CTFd challenges?</h3>
+      <p>Yes. Import a CTFd export directly; challenges, flags and points are mapped.</p>
+      <h3>Does it support King of the Hill?</h3>
+      <p>Yes, as a plugin on a stable plugin API, so an existing King of the Hill project can be wrapped
+        rather than rewritten.</p>
+      <h3>What does it take to run?</h3>
+      <p>Docker with Compose. One command brings up the whole stack. For larger events, the same components
+        scale out horizontally.</p>
+    </section>
+  </main>
+</div>
 
 <footer><div class="wrap">Reduta. Working title. Built as a modular monolith in Go and React. Screenshots are from the running application.</div></footer>
 </body>
