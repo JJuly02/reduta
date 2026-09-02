@@ -430,6 +430,48 @@
         pointing its holder detection at this plugin, not rewriting it. A small operator tool,
         <code>reduta plugin verify</code>, checks that a plugin accepts signed webhooks, is idempotent on
         redelivery, and rejects bad signatures.</p>
+
+      <h3>The plugin protocol</h3>
+      <p>The core pushes signed webhooks to the plugin. Every delivery carries three headers: a timestamp, a
+        signature, and a unique delivery id. The signature is an HMAC-SHA256 over
+        <code>timestamp + "." + body</code> using the shared plugin secret, so a plugin can reject anything
+        that was not sent by the core or was tampered with. The delivery id lets the plugin drop a
+        redelivery without acting twice.</p>
+      <pre class="run">X-Reduta-Event:      tick.minute
+X-Reduta-Timestamp:  2026-09-02T10:00:00Z
+X-Reduta-Delivery:   d3f1...            # dedupe key, idempotent handling
+X-Reduta-Signature:  sha256=&lt;hmac(secret, timestamp + "." + body)&gt;</pre>
+      <p>To change points, the plugin calls back a single narrow endpoint with its bearer token. Awards are
+        idempotent by <code>ref_id</code>, so a retried tick never double counts:</p>
+      <pre class="run">POST /api/v1/plugin/v1/awards      Authorization: Bearer plg_...
+{"event_id":"...","team_id":"&lt;holder&gt;","points":5,
+ "ref_id":"tick:2026-09-02T10:00:00Z:hill-5","reason":"KotH tick hill-5"}</pre>
+
+      <h3>Connecting the dedicated King of the Hill</h3>
+      <p>The standalone King of the Hill project (vulnerable hills, beacon agents, and its own scoreboard)
+        keeps deciding who holds each hill. The bridge just feeds that holder into an event here, so a
+        King of the Hill game can score on the same board as jeopardy challenges. Wiring it up:</p>
+      <ol>
+        <li>Register the plugin in the admin panel (or <code>POST /plugins</code>) to get a <code>plg_</code>
+          token and set the shared webhook secret.</li>
+        <li>Run the bridge next to the core and point it at the event and the King of the Hill scoreboard.
+          The reference <code>koth-plugin</code> is configured entirely with environment variables:</li>
+      </ol>
+      <pre class="run"># the koth-plugin bridge (docker compose service)
+KOTH_WEBHOOK_SECRET   shared secret, must match the plugin registration
+KOTH_CORE_URL         http://server:8080        # this core
+KOTH_PLUGIN_TOKEN     plg_...                    # issued at registration
+KOTH_EVENT_ID         the event the game scores into
+KOTH_TARGET           which hill/target this bridge scores</pre>
+      <ol start="3">
+        <li>Map each King of the Hill team to a team here, and have the bridge read the current holder from
+          the King of the Hill scoreboard on each tick.</li>
+        <li>Before the event, run <code>reduta plugin verify</code> to confirm the bridge accepts signed
+          webhooks, is idempotent on redelivery, and rejects bad signatures.</li>
+      </ol>
+      <div class="note">The dedicated King of the Hill platform, including how to build your own hills and a
+        full walkthrough of this integration from its side, has its own wiki:
+        <a href="https://jjuly02.github.io/king-of-the-hill-ctf/">jjuly02.github.io/king-of-the-hill-ctf</a>.</div>
     </section>
 
     <section id="selfhost">
