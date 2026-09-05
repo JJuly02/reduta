@@ -244,6 +244,27 @@ print(next((c["id"] for c in d if c["title"]=="Imported One"),""))')"
 req POST "/api/v1/events/$EV2/challenges/$IMPEC/submit" "$TMP/pi" '{"flag":"flag{imp1}"}'
 expect_eq "solve imported challenge" "$(printf '%s' "$BODY" | jget correct)" "True"
 
+# ---- M4: file attachments carried in the import JSON ----
+echo "-- M4 file attachments --"
+FDATA="$(printf 'reduta-file-ok' | base64 | tr -d '\n')"
+FBODY="{\"challenges\":[{\"title\":\"WithFile\",\"category\":\"misc\",\"state\":\"published\",\"scoring\":{\"type\":\"static\",\"points\":50},\"flags\":[{\"value\":\"flag{file}\"}],\"files\":[{\"name\":\"note.txt\",\"content_type\":\"text/plain\",\"data\":\"$FDATA\"}]}]}"
+req POST "/api/v1/events/$EV2/import" "$TMP/admin" "$FBODY"
+expect_code "import challenge with file" 200
+req GET "/api/v1/events/$EV2/challenges" "$TMP/admin"
+WFEC="$(printf '%s' "$BODY" | python3 -c 'import sys,json
+d=json.load(sys.stdin)["challenges"]
+print(next((c["id"] for c in d if c["title"]=="WithFile"),""))')"
+req GET "/api/v1/events/$EV2/challenges/$WFEC" "$TMP/admin"
+expect_eq "challenge exposes 1 file" "$(printf '%s' "$BODY" | python3 -c 'import sys,json;print(len(json.load(sys.stdin).get("files",[])))')" "1"
+WFID="$(printf '%s' "$BODY" | python3 -c 'import sys,json;fs=json.load(sys.stdin)["files"];print(fs[0]["id"] if fs else "")')"
+DL="$(curl -s "$BASE/api/v1/events/$EV2/challenges/$WFEC/files/$WFID")"
+expect_eq "download returns file bytes" "$DL" "reduta-file-ok"
+req GET "/api/v1/events/$EV2/export" "$TMP/admin"
+expect_eq "export round-trips file bytes" "$(printf '%s' "$BODY" | python3 -c 'import sys,json,base64
+d=json.load(sys.stdin)
+ch=next((c for c in d["challenges"] if c["title"]=="WithFile"),None)
+print(base64.b64decode(ch["files"][0]["data"]).decode() if ch and ch.get("files") else "")')" "reduta-file-ok"
+
 # ---- M5: realtime + cache ----
 echo "-- M5 realtime & cache --"
 WSC=$(curl -s -m3 -o /dev/null -w '%{http_code}' -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" "$BASE/ws?event=$EV")

@@ -72,6 +72,7 @@ func (s *Server) Router() http.Handler {
 		r.Get("/events/{eventID}/scoreboard/series", s.handleScoreboardSeries)
 		r.Get("/events/{eventID}/challenges", s.handleListChallenges)
 		r.Get("/events/{eventID}/challenges/{ecID}", s.handleGetChallenge)
+		r.Get("/events/{eventID}/challenges/{ecID}/files/{fileID}", s.handleDownloadFile)
 		r.Get("/events/{eventID}/blocks", s.handleListBlocks)
 		r.Get("/events/{eventID}/notifications", s.handleListNotifications)
 
@@ -232,7 +233,13 @@ func (s *Server) writeProblem(w http.ResponseWriter, status int, title, detail s
 }
 
 func decodeJSON(r *http.Request, dst any) error {
-	dec := json.NewDecoder(io.LimitReader(r.Body, 4<<20))
+	return decodeJSONMax(r, dst, 4<<20)
+}
+
+// decodeJSONMax is decodeJSON with an explicit body cap, for endpoints (like
+// import) that legitimately carry larger payloads such as base64 file bytes.
+func decodeJSONMax(r *http.Request, dst any, max int64) error {
+	dec := json.NewDecoder(io.LimitReader(r.Body, max))
 	dec.DisallowUnknownFields()
 	return dec.Decode(dst)
 }

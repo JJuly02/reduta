@@ -417,6 +417,12 @@
         with an optional dry run that returns a plan (created, updated) before anything is written, and is
         idempotent by title. A CTFd export can be imported directly, mapping challenges, flags and points, so
         migrating an existing competition is a single step.</p>
+      <p>Challenges can also carry their files inline. Each challenge in the JSON may include a
+        <code>files</code> array where every entry has a <code>name</code>, an optional
+        <code>content_type</code> and the bytes as base64 in <code>data</code>, so a whole set of challenges
+        and their downloadable attachments loads from one JSON with a single import. Export emits the files the
+        same way (add <code>?files=meta</code> to omit the bytes and keep only metadata). Players download an
+        attachment from the challenge view; the per-file limit is 25 MiB.</p>
     </section>
 
     <section id="plugins">
@@ -512,6 +518,7 @@ KOTH_TARGET           which hill/target this bridge scores</pre>
           <tr><td class="mono">GET /events/{id}/challenges</td><td>Challenge list with solve counts, gated by schedule and unlocks.</td></tr>
           <tr><td class="mono">POST .../challenges/{ec}/submit</td><td>Submit a flag.</td></tr>
           <tr><td class="mono">GET .../challenges/{ec}/attempts</td><td>Your team's attempt history for a challenge.</td></tr>
+          <tr><td class="mono">GET .../challenges/{ec}/files/{id}</td><td>Download a file attached to a challenge.</td></tr>
           <tr><td class="mono">POST .../challenges/bulk</td><td>Bulk action by ids or filter (admin).</td></tr>
           <tr><td class="mono">POST /bulk-jobs/{id}/undo</td><td>Reverse a bulk action (admin).</td></tr>
           <tr><td class="mono">GET /events/{id}/scoreboard</td><td>Standings, plus <code>/scoreboard/series</code> for the chart.</td></tr>

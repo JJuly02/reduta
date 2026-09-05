@@ -31,13 +31,14 @@ type challengeListItem struct {
 }
 
 type challengeDetail struct {
-	ID            string `json:"id"`
-	EventID       string `json:"event_id"`
-	Title         string `json:"title"`
-	Category      string `json:"category"`
-	DescriptionMD string `json:"description_md"`
-	State         string `json:"state"`
-	Points        int    `json:"points"`
+	ID            string                    `json:"id"`
+	EventID       string                    `json:"event_id"`
+	Title         string                    `json:"title"`
+	Category      string                    `json:"category"`
+	DescriptionMD string                    `json:"description_md"`
+	State         string                    `json:"state"`
+	Points        int                       `json:"points"`
+	Files         []store.ChallengeFileMeta `json:"files"`
 }
 
 func (s *Server) handleCreateChallenge(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +104,7 @@ func (s *Server) handleCreateChallenge(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusCreated, challengeDetail{
 		ID: c.ID, EventID: c.EventID, Title: c.Title, Category: c.Category,
 		DescriptionMD: c.DescriptionMD, State: c.State, Points: scoring.Points(c.Scoring),
+		Files: []store.ChallengeFileMeta{},
 	})
 }
 
@@ -190,9 +192,11 @@ func (s *Server) handleGetChallenge(w http.ResponseWriter, r *http.Request) {
 		s.writeProblem(w, http.StatusNotFound, "Not found", "challenge not found")
 		return
 	}
+	files, _ := s.store.ListChallengeFiles(r.Context(), c.ID)
 	s.writeJSON(w, http.StatusOK, challengeDetail{
 		ID: c.ID, EventID: c.EventID, Title: c.Title, Category: c.Category,
 		DescriptionMD: c.DescriptionMD, State: c.State, Points: scoring.Points(c.Scoring),
+		Files: files,
 	})
 }
 

@@ -5,6 +5,18 @@ All notable changes to this project are documented here. Format based on
 
 ## [Unreleased]
 
+### Added - challenge file attachments in the import JSON
+- Challenges can carry files inline in the import/export JSON: each challenge may
+  include a `files` array of `{name, content_type?, data (base64)}`, so a whole set
+  of challenges and their downloadable attachments loads from one JSON in a single
+  import. Export emits files the same way; `?files=meta` omits the bytes.
+- Migration `0008_challenge_files`: files are stored in Postgres (BYTEA) and cascade
+  with their challenge. Per-file cap 25 MiB; import body cap raised to 128 MiB.
+- New endpoint `GET /events/{id}/challenges/{ec}/files/{fileID}` streams a file,
+  gated by the same visibility as the challenge. The challenge detail now lists its
+  files and the player challenge view shows download links. CI-tolerant lint fixes
+  and the `nhooyr.io/websocket -> coder/websocket` migration ship alongside.
+
 ### Changed - global teams (CTFd-style)
 - Migration `0007_global_teams`: teams are now org-scoped and global (one team per
   user via `team_members`); admins assign teams to events via `event_teams`.

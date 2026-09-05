@@ -5,6 +5,15 @@ import { api } from "../api";
 import { useEventWS } from "../ws";
 import { useT } from "../i18n";
 
+function fmtSize(n: number): string {
+  if (!n && n !== 0) return "";
+  const u = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return `${i === 0 ? v : v.toFixed(1)} ${u[i]}`;
+}
+
 export default function Play() {
   const { id } = useParams();
   const qc = useQueryClient();
@@ -201,7 +210,22 @@ function ChallengePanel({ eventId, c, solved, hasTeam, onClose, onSolved }: any)
             </div>
 
             {tab === "desc" && (
-              <p style={{ whiteSpace: "pre-wrap" }}>{detail.data?.description_md || t("play.noDescription")}</p>
+              <>
+                <p style={{ whiteSpace: "pre-wrap" }}>{detail.data?.description_md || t("play.noDescription")}</p>
+                {(detail.data?.files ?? []).length > 0 && (
+                  <div className="chal-files mt-3">
+                    <div className="small text-uppercase text-muted mb-1">{t("play.files")}</div>
+                    <ul className="list-unstyled mb-0">
+                      {detail.data.files.map((f: any) => (
+                        <li key={f.id} className="d-flex align-items-center gap-2">
+                          <a href={`/api/v1/events/${eventId}/challenges/${c.id}/files/${f.id}`} download={f.name}>{f.name}</a>
+                          <span className="text-muted small mono">{fmtSize(f.size)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
             )}
             {tab === "attempts" && (
               <div className="mb-2">
