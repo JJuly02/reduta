@@ -41,7 +41,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/manifest", manifest)
 	mux.HandleFunc("/hooks", hooks)
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) })
 	srv := &http.Server{Addr: ":8090", Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	println("koth-plugin listening on :8090")
 	_ = srv.ListenAndServe()

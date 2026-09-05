@@ -69,7 +69,7 @@ func (s *Store) CreateLibraryChallenge(ctx context.Context, orgID, slug, title, 
 	if err != nil {
 		return Challenge{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var c Challenge
 	err = tx.QueryRow(ctx,
@@ -177,7 +177,7 @@ func (s *Store) NewRevision(ctx context.Context, challengeID, descMD string, sco
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	var next int
 	if err = tx.QueryRow(ctx, `UPDATE challenges SET current_rev = current_rev + 1 WHERE id=$1::uuid RETURNING current_rev`, challengeID).Scan(&next); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -238,7 +238,7 @@ func (s *Store) EmbedFromLibrary(ctx context.Context, eventID, challengeID strin
 	if err != nil {
 		return EventChallenge{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var c EventChallenge
 	var raw []byte
@@ -377,7 +377,7 @@ func (s *Store) BulkApply(ctx context.Context, eventID, actorID, action string, 
 	if err != nil {
 		return "", 0, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// snapshot for undo (state, block_id, tags) unless delete
 	var undo []byte
@@ -511,7 +511,7 @@ func (s *Store) BulkUndo(ctx context.Context, jobID string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	n := 0
 	for _, r := range snap {
 		if _, err := tx.Exec(ctx, `UPDATE event_challenges SET state=$2, block_id=$3, tags=$4 WHERE id=$1::uuid`,

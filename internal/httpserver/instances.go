@@ -42,10 +42,10 @@ func (sp instanceSpec) usesTeamFlag() bool {
 // documented opt-in; the mock keeps the lifecycle contract testable and the
 // server free of container privileges by default (spec 5.8, ADR-0009).
 func provisionMock(sp instanceSpec) (host string, port int) {
-	host = "10.13.37." + strconv.Itoa(2+rand.Intn(250))
+	host = "10.13.37." + strconv.Itoa(2+rand.Intn(250)) //nolint:gosec // mock provisioner: non-crypto host assignment
 	port = sp.Port
 	if port == 0 {
-		port = 30000 + rand.Intn(20000)
+		port = 30000 + rand.Intn(20000) //nolint:gosec // mock provisioner: non-crypto port assignment
 	}
 	return host, port
 }

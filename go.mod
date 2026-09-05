@@ -3,6 +3,7 @@ module github.com/JJuly02/reduta
 go 1.23
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/hibiken/asynq v0.25.1
@@ -11,7 +12,6 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/teambition/rrule-go v1.8.2
 	golang.org/x/crypto v0.28.0
-	nhooyr.io/websocket v1.8.17
 )
 
 require (

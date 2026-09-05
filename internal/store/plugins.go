@@ -76,7 +76,7 @@ func (s *Store) PluginAward(ctx context.Context, eventID, teamID, source, refID 
 	if err != nil {
 		return false, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	ct, err := tx.Exec(ctx,
 		`INSERT INTO score_events (event_id, team_id, kind, source, ref_id, points, meta)
 		 VALUES ($1::uuid,$2::uuid,'award',$3,$4,$5,$6::jsonb)
@@ -104,7 +104,7 @@ func (s *Store) DeletePluginAward(ctx context.Context, eventID, source, refID st
 	if err != nil {
 		return false, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	var teamID string
 	var points int
 	err = tx.QueryRow(ctx,

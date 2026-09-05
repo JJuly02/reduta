@@ -49,7 +49,7 @@ func (s *Store) ReplaceFlags(ctx context.Context, ecID string, flags []Flag) err
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	if _, err := tx.Exec(ctx, `DELETE FROM flags WHERE ec_id=$1::uuid`, ecID); err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (s *Store) CreateChallengeWithFlags(ctx context.Context, eventID, title, ca
 	if err != nil {
 		return "", err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	var id string
 	if err := tx.QueryRow(ctx,
 		`INSERT INTO event_challenges (event_id, title, category, description_md, scoring, state, tags)

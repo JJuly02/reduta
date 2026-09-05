@@ -353,7 +353,7 @@ func (s *Store) RecordSolve(ctx context.Context, e Event, ecID, teamID, userID s
 	if err != nil {
 		return res, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx,
 		`INSERT INTO submissions (event_id, ec_id, team_id, user_id, value_hash, correct, ip)
