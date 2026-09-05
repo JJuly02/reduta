@@ -63,8 +63,8 @@ project; the CTFd importer only reads CTFd's export format for interoperability.
 
 ## License
 
-Licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0). See the
-[LICENSE](LICENSE) file. In short: you may run, study, modify, and redistribute
-it, and if you offer a modified version as a network service you must make your
-modified source available under the same license. Rationale in
+Copyright 2026 JJuly02. Licensed under the **Apache License 2.0**; see the
+[LICENSE](LICENSE) file. You may use, modify, and redistribute it, including
+commercially, as long as you keep the license and notices. It also carries an
+explicit patent grant. Rationale in
 [docs/adr/0006-license.md](docs/adr/0006-license.md).
