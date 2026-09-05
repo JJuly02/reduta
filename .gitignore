@@ -1,0 +1,8 @@
+/out/
+/bin/
+.env
+*.local
+node_modules/
+web/dist/
+coverage.out
+.DS_Store

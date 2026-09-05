@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS scoreboard_entries;
+DROP TABLE IF EXISTS score_events;
+DROP TABLE IF EXISTS submissions;
+DROP TABLE IF EXISTS flags;
+DROP TABLE IF EXISTS event_challenges;
+DROP TABLE IF EXISTS memberships;
+DROP TABLE IF EXISTS teams;
+DROP TABLE IF EXISTS events;

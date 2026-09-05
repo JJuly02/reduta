@@ -54,7 +54,17 @@ make test   # go test ./...
 make up     # full stack
 ```
 
+## Acknowledgment
+
+Reduta is an independent, from-scratch implementation. It was inspired by CTFd
+and by the operational friction of running large events on existing platforms. It
+shares no code with CTFd and is not affiliated with or endorsed by the CTFd
+project; the CTFd importer only reads CTFd's export format for interoperability.
+
 ## License
 
-Undecided (AGPL-3.0 vs permissive, see `docs/adr/0006-license.md`); decided
-before first public release, so no `LICENSE` file is committed yet.
+Licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0). See the
+[LICENSE](LICENSE) file. In short: you may run, study, modify, and redistribute
+it, and if you offer a modified version as a network service you must make your
+modified source available under the same license. Rationale in
+[docs/adr/0006-license.md](docs/adr/0006-license.md).

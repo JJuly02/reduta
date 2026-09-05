@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: reduta
+      POSTGRES_PASSWORD: reduta
+      POSTGRES_DB: reduta
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reduta"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build: .
+    environment:
+      REDUTA_ENV: dev
+      REDUTA_HTTP_ADDR: ":8080"
+      REDUTA_DATABASE_URL: "postgres://reduta:reduta@postgres:5432/reduta?sslmode=disable"
+      REDUTA_REDIS_ADDR: "redis:6379"
+      REDUTA_LOG_LEVEL: "info"
+      # Dev-only bootstrap owner (used by scripts/smoke.sh):
+      REDUTA_BOOTSTRAP_ADMIN_EMAIL: "admin@reduta.local"
+      REDUTA_BOOTSTRAP_ADMIN_PASSWORD: "admin-dev-password"
+    ports: ["8080:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build: .
+    entrypoint: ["reduta-worker"]
+    environment:
+      REDUTA_ENV: dev
+      REDUTA_DATABASE_URL: "postgres://reduta:reduta@postgres:5432/reduta?sslmode=disable"
+      REDUTA_REDIS_ADDR: "redis:6379"
+      REDUTA_LOG_LEVEL: "info"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  web:
+    build: ./web
+    ports: ["3000:80"]
+    depends_on: [server]
+
+  koth-plugin:
+    build: .
+    entrypoint: ["koth-plugin"]
+    environment:
+      KOTH_WEBHOOK_SECRET: "test-secret"
+    depends_on: [server]
+
+volumes:
+  pgdata:
